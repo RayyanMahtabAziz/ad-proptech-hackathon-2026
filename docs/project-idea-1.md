@@ -532,7 +532,7 @@ For a 3-hour hackathon, the stack must be minimal and fast.
 ## Preferred stack
 
 * **Frontend / App:** React / Next.js + TypeScript + Tailwind
-* **Hosting:** Vercel
+* **Hosting:** (Front-End) Vercel + (Back-End) Render
 * **LLM API:** OpenRouter
 * **Data processing:** local CSV / preprocessed JSON
 * **Scoring / logic:** lightweight in-app logic or a small preprocessing script
