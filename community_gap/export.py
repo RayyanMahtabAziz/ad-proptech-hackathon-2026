@@ -323,16 +323,18 @@ def export_outputs(
     export_csv_summary(district_rows, csv_path)
 
     district_count = len(district_rows)
-    print(f"Districts exported: {district_count}")
-    print("\nTop 5 highest-gap districts:")
+    print(f"Exported district count: {district_count}")
+    print("\nTop 5 high-gap districts (score, confidence):")
     top5 = district_rows.nlargest(5, "community_gap_score")
     for _, row in top5.iterrows():
         print(
-            f"  {row['district']}: gap {int(row['community_gap_score'])} "
-            f"({row.get('gap_level', 'n/a')}, {row.get('confidence_level', 'n/a')} confidence)"
+            f"  {row['district']}: "
+            f"score {int(row['community_gap_score'])}, "
+            f"{row.get('confidence_level', 'n/a')} confidence"
         )
-    print(f"\nJSON: {json_path.resolve()}")
-    print(f"CSV:  {csv_path.resolve()}")
+    print("\nOutput files:")
+    print(f"  JSON: {json_path.resolve()}")
+    print(f"  CSV:  {csv_path.resolve()}")
 
 
 def build_metadata_stub() -> dict[str, Any]:

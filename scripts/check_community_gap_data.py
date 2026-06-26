@@ -41,7 +41,13 @@ REQUIRED_SCORE_KEYS = [
     "amenity_adequacy_score",
     "amenity_shortage_score",
     "community_gap_score",
+    "confidence_score",
+]
+
+REQUIRED_CLASSIFICATION_KEYS = [
+    "gap_level",
     "confidence_level",
+    "recommended_intervention_category",
 ]
 
 
@@ -102,6 +108,10 @@ def check_processed_outputs() -> list[str]:
         for key in REQUIRED_SCORE_KEYS:
             if key not in scores:
                 errors.append(f"District scores missing key: {key}")
+        classification = sample.get("classification", {})
+        for key in REQUIRED_CLASSIFICATION_KEYS:
+            if key not in classification:
+                errors.append(f"District classification missing key: {key}")
 
     print(f"  JSON OK — {len(districts)} district(s) in payload")
 

@@ -2,7 +2,7 @@
 """
 Build processed community gap outputs from challenge CSVs.
 
-Run from repo root::
+Run from the starter-kit repo root::
 
     python scripts/build_community_gap_data.py
 
@@ -16,31 +16,39 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-# Allow imports when run as: python scripts/build_community_gap_data.py
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 from community_gap.data_loader import DataValidationError  # noqa: E402
 from community_gap.export import export_outputs  # noqa: E402
 
+DATA_DIR = REPO_ROOT / "data"
+OUTPUT_JSON = REPO_ROOT / "processed" / "community_gap_outputs.json"
+OUTPUT_CSV = REPO_ROOT / "processed" / "community_gap_scores.csv"
+
 
 def main() -> int:
+    """Run the full export pipeline and write processed outputs."""
+    print("Community Gap & Confidence Copilot")
+    print("Building processed outputs...\n")
+
     try:
         export_outputs(
-            data_dir=REPO_ROOT / "data",
-            output_json=REPO_ROOT / "processed" / "community_gap_outputs.json",
-            output_csv=REPO_ROOT / "processed" / "community_gap_scores.csv",
+            data_dir=DATA_DIR,
+            output_json=OUTPUT_JSON,
+            output_csv=OUTPUT_CSV,
         )
-        print("\nDone. Full pipeline complete.")
     except DataValidationError as exc:
-        print(f"Data validation error: {exc}", file=sys.stderr)
+        print(f"\nData validation error: {exc}", file=sys.stderr)
         return 1
     except ValueError as exc:
-        print(f"Build failed: {exc}", file=sys.stderr)
+        print(f"\nBuild failed: {exc}", file=sys.stderr)
         return 1
     except Exception as exc:
-        print(f"Build failed: {exc}", file=sys.stderr)
+        print(f"\nBuild failed: {exc}", file=sys.stderr)
         return 1
+
+    print("\nBuild complete.")
     return 0
 
 
