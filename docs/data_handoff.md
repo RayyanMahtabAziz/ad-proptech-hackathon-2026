@@ -22,6 +22,8 @@ It:
 
 **Core idea:** scores and evidence come from the pipeline. The UI and LLM only **display and explain** them.
 
+**Data grain:** each JSON district object is **one aggregated district row**. Community CSVs with multiple communities per district are rolled up before scoring (population summed, service demand population-weighted). OSM amenity counts and supporting context are already district-level.
+
 **Code lives in:** `community_gap/`  
 **Docs:** `docs/data_methodology.md`, `docs/data_inventory.md`, `docs/demo_districts.md`
 

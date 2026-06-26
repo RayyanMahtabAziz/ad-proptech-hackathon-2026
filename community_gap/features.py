@@ -209,6 +209,10 @@ def aggregate_community_features(communities: pd.DataFrame) -> pd.DataFrame:
         community_record_count=("district", "size"),
     ).reset_index()
 
+    aggregated["occupancy_rate"] = aggregated["occupancy_rate"].round(2)
+    aggregated["mobility_score"] = aggregated["mobility_score"].round(2)
+    aggregated["resident_experience_score"] = aggregated["resident_experience_score"].round(2)
+
     demand_weighted = grouped.apply(
         lambda g: _population_weighted_mean(g, "service_demand_index", "population_estimate"),
         include_groups=False,

@@ -270,9 +270,16 @@ def _gap_level(score: pd.Series) -> pd.Series:
 
 def add_scores(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Add deterministic score columns to a feature dataframe.
+    Add deterministic score columns to a district-level feature dataframe.
 
     Expects output from :func:`community_gap.features.build_full_feature_dataset`.
+
+    Score design (see docs/data_methodology.md):
+      - community_need_score: demand, mobility weakness, experience weakness
+      - amenity_adequacy_score / amenity_shortage_score: OSM vs city medians
+      - market_pressure_score: listings + transactions (supporting only)
+      - intervention_feasibility_score: parcels + infrastructure (separate from gap)
+      - community_gap_score: 55% need + 35% shortage + 10% market pressure
     """
     out = df.copy()
 
@@ -382,7 +389,9 @@ def add_confidence(df: pd.DataFrame) -> pd.DataFrame:
     Add evidence-agreement confidence fields to a scored dataframe.
 
     Confidence reflects how many independent signals align — not ML probability.
-    Expects score columns from :func:`add_scores` plus city median feature columns.
+
+    Eight agreement signals (see SIGNAL_COLUMNS). High = 6+ agree, Medium = 3–5,
+    Low otherwise. High is capped at Medium when data_completeness_score < 80%.
     """
     out = df.copy()
 
@@ -434,7 +443,7 @@ def score_all_districts(features: pd.DataFrame) -> pd.DataFrame:
     """
     Apply scoring and rank rows by community_gap_score (1 = highest priority).
 
-    Returns one row per input record (community-level when features are community-level).
+    Returns one row per district in *features* (district-level after aggregation).
     """
     scored = add_confidence(add_scores(features))
     scored = scored.sort_values("community_gap_score", ascending=False).reset_index(drop=True)

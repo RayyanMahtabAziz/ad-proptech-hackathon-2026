@@ -211,12 +211,12 @@ def _load_supporting_csv(path: Path, filename: str) -> pd.DataFrame | None:
     for safe downstream feature engineering.
     """
     if not path.exists():
-        _record_warning(f"Optional file missing: {filename} — supporting context skipped.")
+        _record_warning(f"Optional file missing: {filename} - supporting context skipped.")
         return None
 
     df = pd.read_csv(path)
     if df.empty:
-        _record_warning(f"{filename} is empty — supporting context skipped.")
+        _record_warning(f"{filename} is empty - supporting context skipped.")
         return None
 
     min_columns = SUPPORTING_MIN_COLUMNS.get(filename, ["district"])
@@ -224,7 +224,7 @@ def _load_supporting_csv(path: Path, filename: str) -> pd.DataFrame | None:
     if missing_min:
         _record_warning(
             f"{filename} is missing required join column(s) "
-            f"{', '.join(missing_min)} — supporting context skipped."
+            f"{', '.join(missing_min)} - supporting context skipped."
         )
         return None
 
@@ -233,7 +233,7 @@ def _load_supporting_csv(path: Path, filename: str) -> pd.DataFrame | None:
     if missing_preferred:
         _record_warning(
             f"{filename} is missing useful columns "
-            f"({', '.join(missing_preferred)}) — supporting context skipped."
+            f"({', '.join(missing_preferred)}) - supporting context skipped."
         )
         return None
 
@@ -243,12 +243,12 @@ def _load_supporting_csv(path: Path, filename: str) -> pd.DataFrame | None:
 def _load_investors_csv(path: Path) -> pd.DataFrame | None:
     """Load optional investors CSV when present and non-empty."""
     if not path.exists():
-        _record_warning("Optional file missing: sample_investors.csv — investors skipped.")
+        _record_warning("Optional file missing: sample_investors.csv - investors skipped.")
         return None
 
     df = pd.read_csv(path)
     if df.empty:
-        _record_warning("sample_investors.csv is empty — investors skipped.")
+        _record_warning("sample_investors.csv is empty - investors skipped.")
         return None
 
     df = _prepare_loaded_frame(df)
@@ -371,7 +371,7 @@ def main() -> None:
     for filename in OPTIONAL_FILES:
         key = FILE_TO_KEY[filename]
         if key not in loaded_keys:
-            print(f"{filename:<30} {key:<15} {'—':>8}  {'—':>10}  (not loaded)")
+            print(f"{filename:<30} {key:<15} {'-':>8}  {'-':>10}  (not loaded)")
 
 
 if __name__ == "__main__":

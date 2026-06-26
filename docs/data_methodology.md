@@ -21,7 +21,7 @@ This document explains how we turn challenge datasets into district scores, conf
 
 **Core inputs** (community need + amenity supply) drive the main gap score. **Supporting inputs** (listings, transactions, parcels) add context and secondary scores but do not override the need-vs-coverage comparison.
 
-District names are normalized and joined across files. See `docs/data_inventory.md` for column-level detail and join quality.
+District names are normalized and joined across files. Community records in `sample_communities.csv` are **aggregated to one row per district** (population summed, demand population-weighted) before scoring. See `docs/data_inventory.md` for column-level detail and join quality.
 
 ---
 
@@ -123,7 +123,7 @@ Instead, it measures **how many independent evidence signals agree** that a dist
 | Low healthcare amenities | OSM count below city median |
 | Low mobility amenities | OSM count below city median |
 | High market pressure | Market score ≥ 60 |
-| High gap | Gap score ≥ 75 |
+| Need and shortage agree | `community_need_score` and `amenity_shortage_score` both ≥ city median |
 
 **Agreement count → level:**
 
@@ -162,7 +162,7 @@ The system is designed to be **transparent about limits**, not to overclaim:
 
 - **Decomposed scores** — judges and users can see need, adequacy, shortage, market, and feasibility separately instead of one opaque number.
 - **Evidence bullets** — every flag ties back to a measurable comparison (e.g. district value vs city median).
-- **Explicit uncertainty** — when signals are weak or mixed, `confidence_level` drops to Medium or Low and `confidence_reason` says so.
+- **Explicit uncertainty** — when signals genuinely disagree, `confidence_level` drops and `top_gap_drivers` may include Mixed evidence; `confidence_reason` is district-specific.
 - **Completeness check** — districts with sparse core data cannot receive High confidence.
 - **Supporting vs core** — listings and parcels inform context and feasibility; they do not dominate the need-vs-coverage story.
 
@@ -184,7 +184,7 @@ Any public demo, slide, or UI that displays amenity maps or counts should includ
 ## Pipeline reference
 
 ```
-data_loader → features → scoring → evidence → export
+data_loader → features → pipeline (scoring → evidence) → export
 ```
 
 **Build output:** `python scripts/build_community_gap_data.py`  

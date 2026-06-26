@@ -1,7 +1,7 @@
 {
   "project": "Community Gap & Confidence Copilot",
   "track": "Future Communities",
-  "generated_at": "2026-06-26T10:38:19.010722+00:00",
+  "generated_at": "2026-06-26T10:40:59.855893+00:00",
   "methodology_version": "1.0.0",
   "scoring_weights": {
     "community_need": 0.55,
@@ -22,8 +22,8 @@
         "population_estimate": 247087,
         "occupancy_rate": 0.86,
         "service_demand_index": 79.58,
-        "mobility_score": 56.333333333333336,
-        "resident_experience_score": 74.66666666666667
+        "mobility_score": 56.33,
+        "resident_experience_score": 74.67
       },
       "amenity_counts": {
         "education": 0,
@@ -45,7 +45,7 @@
         "vacant_or_available_parcel_count": 13
       },
       "scores": {
-        "community_need_score": 53,
+        "community_need_score": 54,
         "amenity_adequacy_score": 10,
         "amenity_shortage_score": 90,
         "market_pressure_score": 91,
@@ -68,7 +68,7 @@
         "Education amenity coverage is below the city median (0 OSM amenities vs median 10).",
         "Healthcare amenity coverage is below the city median (1 OSM amenities vs median 10).",
         "Mobility-related amenities are limited compared with other districts (1 OSM vs median 19).",
-        "Community need (53) and amenity shortage (90) both exceed city medians, reinforcing the gap story."
+        "Community need (54) and amenity shortage (90) both exceed city medians, reinforcing the gap story."
       ],
       "top_gap_drivers": [
         "Service demand",
@@ -91,10 +91,10 @@
       },
       "community_metrics": {
         "population_estimate": 257039,
-        "occupancy_rate": 0.8720000000000001,
+        "occupancy_rate": 0.87,
         "service_demand_index": 52.82,
         "mobility_score": 80.2,
-        "resident_experience_score": 90.0
+        "resident_experience_score": 90
       },
       "amenity_counts": {
         "education": 0,
@@ -157,10 +157,10 @@
       },
       "community_metrics": {
         "population_estimate": 233922,
-        "occupancy_rate": 0.905,
+        "occupancy_rate": 0.9,
         "service_demand_index": 72.92,
         "mobility_score": 65.5,
-        "resident_experience_score": 79.0
+        "resident_experience_score": 79
       },
       "amenity_counts": {
         "education": 23,
@@ -223,14 +223,14 @@
       "profile": "leisure",
       "location": {
         "latitude": 24.49,
-        "longitude": 54.603
+        "longitude": 54.6
       },
       "community_metrics": {
         "population_estimate": 321425,
-        "occupancy_rate": 0.8516666666666667,
+        "occupancy_rate": 0.85,
         "service_demand_index": 58.83,
         "mobility_score": 83.5,
-        "resident_experience_score": 86.16666666666667
+        "resident_experience_score": 86.17
       },
       "amenity_counts": {
         "education": 2,
@@ -290,15 +290,15 @@
       "area_type": "island",
       "profile": "mid_high",
       "location": {
-        "latitude": 24.493,
-        "longitude": 54.406
+        "latitude": 24.49,
+        "longitude": 54.41
       },
       "community_metrics": {
         "population_estimate": 287319,
-        "occupancy_rate": 0.9233333333333333,
+        "occupancy_rate": 0.92,
         "service_demand_index": 62.51,
-        "mobility_score": 80.0,
-        "resident_experience_score": 87.33333333333333
+        "mobility_score": 80,
+        "resident_experience_score": 87.33
       },
       "amenity_counts": {
         "education": 5,
@@ -320,7 +320,7 @@
         "vacant_or_available_parcel_count": 10
       },
       "scores": {
-        "community_need_score": 47,
+        "community_need_score": 46,
         "amenity_adequacy_score": 48,
         "amenity_shortage_score": 52,
         "market_pressure_score": 43,
@@ -340,7 +340,7 @@
         "Service demand is above the city median (63 vs 63).",
         "Education amenity coverage is below the city median (5 OSM amenities vs median 10).",
         "Healthcare amenity coverage is below the city median (4 OSM amenities vs median 10).",
-        "Community need (47) and amenity shortage (52) both exceed city medians, reinforcing the gap story."
+        "Community need (46) and amenity shortage (52) both exceed city medians, reinforcing the gap story."
       ],
       "top_gap_drivers": [
         "Service demand",
@@ -359,7 +359,7 @@
       },
       "community_metrics": {
         "population_estimate": 283078,
-        "occupancy_rate": 0.8879999999999999,
+        "occupancy_rate": 0.89,
         "service_demand_index": 82.57,
         "mobility_score": 63.8,
         "resident_experience_score": 65.4
@@ -428,9 +428,9 @@
       "community_metrics": {
         "population_estimate": 24101,
         "occupancy_rate": 0.86,
-        "service_demand_index": 72.0,
-        "mobility_score": 57.0,
-        "resident_experience_score": 78.0
+        "service_demand_index": 72,
+        "mobility_score": 57,
+        "resident_experience_score": 78
       },
       "amenity_counts": {
         "education": 12,
@@ -492,15 +492,15 @@
       "area_type": "waterfront",
       "profile": "premium",
       "location": {
-        "latitude": 24.452,
-        "longitude": 54.332
+        "latitude": 24.45,
+        "longitude": 54.33
       },
       "community_metrics": {
         "population_estimate": 378835,
         "occupancy_rate": 0.88,
         "service_demand_index": 53.44,
-        "mobility_score": 85.0,
-        "resident_experience_score": 90.71428571428571
+        "mobility_score": 85,
+        "resident_experience_score": 90.71
       },
       "amenity_counts": {
         "education": 1,
@@ -557,14 +557,14 @@
       "profile": "innovation",
       "location": {
         "latitude": 24.43,
-        "longitude": 54.614
+        "longitude": 54.61
       },
       "community_metrics": {
         "population_estimate": 479286,
-        "occupancy_rate": 0.9071428571428571,
+        "occupancy_rate": 0.91,
         "service_demand_index": 42.69,
-        "mobility_score": 85.28571428571429,
-        "resident_experience_score": 92.0
+        "mobility_score": 85.29,
+        "resident_experience_score": 92
       },
       "amenity_counts": {
         "education": 11,
@@ -629,9 +629,9 @@
       "community_metrics": {
         "population_estimate": 85710,
         "occupancy_rate": 0.81,
-        "service_demand_index": 84.0,
-        "mobility_score": 54.0,
-        "resident_experience_score": 71.0
+        "service_demand_index": 84,
+        "mobility_score": 54,
+        "resident_experience_score": 71
       },
       "amenity_counts": {
         "education": 22,
@@ -698,9 +698,9 @@
       },
       "community_metrics": {
         "population_estimate": 222101,
-        "occupancy_rate": 0.8425,
+        "occupancy_rate": 0.84,
         "service_demand_index": 72.92,
-        "mobility_score": 60.0,
+        "mobility_score": 60,
         "resident_experience_score": 68.5
       },
       "amenity_counts": {
@@ -768,7 +768,7 @@
       },
       "community_metrics": {
         "population_estimate": 210334,
-        "occupancy_rate": 0.8975,
+        "occupancy_rate": 0.9,
         "service_demand_index": 62.5,
         "mobility_score": 61.5,
         "resident_experience_score": 88.25
@@ -830,15 +830,15 @@
       "area_type": "central",
       "profile": "established",
       "location": {
-        "latitude": 24.472,
-        "longitude": 54.338
+        "latitude": 24.47,
+        "longitude": 54.34
       },
       "community_metrics": {
         "population_estimate": 509261,
-        "occupancy_rate": 0.9228571428571428,
+        "occupancy_rate": 0.92,
         "service_demand_index": 56.22,
-        "mobility_score": 85.71428571428571,
-        "resident_experience_score": 90.0
+        "mobility_score": 85.71,
+        "resident_experience_score": 90
       },
       "amenity_counts": {
         "education": 1,
@@ -895,15 +895,15 @@
       "area_type": "island",
       "profile": "premium",
       "location": {
-        "latitude": 24.545,
-        "longitude": 54.431
+        "latitude": 24.55,
+        "longitude": 54.43
       },
       "community_metrics": {
         "population_estimate": 313795,
-        "occupancy_rate": 0.8533333333333334,
+        "occupancy_rate": 0.85,
         "service_demand_index": 45.33,
-        "mobility_score": 85.33333333333333,
-        "resident_experience_score": 92.0
+        "mobility_score": 85.33,
+        "resident_experience_score": 92
       },
       "amenity_counts": {
         "education": 8,
@@ -925,7 +925,7 @@
         "vacant_or_available_parcel_count": 21
       },
       "scores": {
-        "community_need_score": 32,
+        "community_need_score": 31,
         "amenity_adequacy_score": 41,
         "amenity_shortage_score": 59,
         "market_pressure_score": 32,
@@ -964,10 +964,10 @@
       },
       "community_metrics": {
         "population_estimate": 76755,
-        "occupancy_rate": 0.9299999999999999,
+        "occupancy_rate": 0.93,
         "service_demand_index": 76.57,
-        "mobility_score": 67.0,
-        "resident_experience_score": 71.0
+        "mobility_score": 67,
+        "resident_experience_score": 71
       },
       "amenity_counts": {
         "education": 27,
@@ -1032,10 +1032,10 @@
       },
       "community_metrics": {
         "population_estimate": 445889,
-        "occupancy_rate": 0.8485714285714286,
+        "occupancy_rate": 0.85,
         "service_demand_index": 47.54,
-        "mobility_score": 88.71428571428571,
-        "resident_experience_score": 90.85714285714286
+        "mobility_score": 88.71,
+        "resident_experience_score": 90.86
       },
       "amenity_counts": {
         "education": 1,
@@ -1099,8 +1099,8 @@
         "population_estimate": 207187,
         "occupancy_rate": 0.91,
         "service_demand_index": 69.65,
-        "mobility_score": 68.0,
-        "resident_experience_score": 87.0
+        "mobility_score": 68,
+        "resident_experience_score": 87
       },
       "amenity_counts": {
         "education": 12,
@@ -1157,13 +1157,13 @@
       "profile": "mid",
       "location": {
         "latitude": 24.49,
-        "longitude": 54.372
+        "longitude": 54.37
       },
       "community_metrics": {
         "population_estimate": 308342,
-        "occupancy_rate": 0.8625,
+        "occupancy_rate": 0.86,
         "service_demand_index": 68.56,
-        "mobility_score": 69.0,
+        "mobility_score": 69,
         "resident_experience_score": 80.75
       },
       "amenity_counts": {
@@ -1186,7 +1186,7 @@
         "vacant_or_available_parcel_count": 14
       },
       "scores": {
-        "community_need_score": 48,
+        "community_need_score": 47,
         "amenity_adequacy_score": 100,
         "amenity_shortage_score": 0,
         "market_pressure_score": 70,
@@ -1225,15 +1225,15 @@
       "area_type": "central",
       "profile": "mid_high",
       "location": {
-        "latitude": 24.431,
+        "latitude": 24.43,
         "longitude": 54.39
       },
       "community_metrics": {
         "population_estimate": 562345,
-        "occupancy_rate": 0.8511111111111112,
+        "occupancy_rate": 0.85,
         "service_demand_index": 59.92,
-        "mobility_score": 75.55555555555556,
-        "resident_experience_score": 85.88888888888889
+        "mobility_score": 75.56,
+        "resident_experience_score": 85.89
       },
       "amenity_counts": {
         "education": 50,
@@ -1288,15 +1288,15 @@
       "area_type": "central",
       "profile": "established",
       "location": {
-        "latitude": 24.466,
-        "longitude": 54.349
+        "latitude": 24.47,
+        "longitude": 54.35
       },
       "community_metrics": {
         "population_estimate": 487073,
-        "occupancy_rate": 0.9128571428571429,
+        "occupancy_rate": 0.91,
         "service_demand_index": 55.49,
-        "mobility_score": 82.0,
-        "resident_experience_score": 91.28571428571429
+        "mobility_score": 82,
+        "resident_experience_score": 91.29
       },
       "amenity_counts": {
         "education": 23,
