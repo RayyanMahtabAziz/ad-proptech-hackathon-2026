@@ -47,6 +47,22 @@ PERCENTILE_COLUMNS = {
     "total_amenities_percentile": "total_amenities",
 }
 
+# Supporting context only — must not drive community_gap_score directly.
+LISTING_COUNT_COLUMNS = [
+    "listing_count",
+    "available_listing_count",
+    "rent_listing_count",
+    "sale_listing_count",
+]
+
+LISTING_CONTEXT_COLUMNS = LISTING_COUNT_COLUMNS + [
+    "avg_rent_price_per_sqm",
+    "avg_sale_price_per_sqm",
+    "median_listing_size_sqm",
+    "dominant_property_type",
+    "furnished_share",
+    "active_listing_share",
+]
 
 def build_amenity_counts(osm_amenities: pd.DataFrame) -> pd.DataFrame:
     """
@@ -112,6 +128,89 @@ def build_core_dataset(
     return df
 
 
+def _dominant_value(series: pd.Series) -> object:
+    """Return the statistical mode, or NA when empty."""
+    mode = series.dropna().mode()
+    return mode.iloc[0] if not mode.empty else pd.NA
+
+
+def build_listing_context(listings: pd.DataFrame) -> pd.DataFrame:
+    """
+    Build district-level residential listing activity features.
+
+    Rent and sale listings share ``price_aed`` but represent different markets,
+    so rent and sale price metrics are computed separately from ``price_per_sqm_aed``.
+
+    Returns one row per district. Supporting context only — not a core gap driver.
+    """
+    rent = listings[listings["listing_type"] == "rent"]
+    sale = listings[listings["listing_type"] == "sale"]
+
+    context = listings.groupby("district", observed=True).agg(
+        listing_count=("listing_id", "count"),
+        available_listing_count=("status", lambda s: (s == "available").sum()),
+        rent_listing_count=("listing_type", lambda s: (s == "rent").sum()),
+        sale_listing_count=("listing_type", lambda s: (s == "sale").sum()),
+        median_listing_size_sqm=("size_sqm", "median"),
+        dominant_property_type=("property_type", _dominant_value),
+    )
+
+    rent_prices = (
+        rent.groupby("district", observed=True)["price_per_sqm_aed"]
+        .mean()
+        .rename("avg_rent_price_per_sqm")
+    )
+    sale_prices = (
+        sale.groupby("district", observed=True)["price_per_sqm_aed"]
+        .mean()
+        .rename("avg_sale_price_per_sqm")
+    )
+
+    context = context.join(rent_prices, how="left").join(sale_prices, how="left")
+
+    if "furnished" in listings.columns:
+        furnished_share = (
+            listings.groupby("district", observed=True)["furnished"]
+            .mean()
+            .rename("furnished_share")
+        )
+        context = context.join(furnished_share, how="left")
+
+    context["active_listing_share"] = (
+        context["available_listing_count"] / context["listing_count"].replace(0, pd.NA)
+    ).fillna(0.0)
+
+    context = context.reset_index()
+
+    int_cols = LISTING_COUNT_COLUMNS
+    context[int_cols] = context[int_cols].astype(int)
+    context["median_listing_size_sqm"] = context["median_listing_size_sqm"].round(2)
+    context["avg_rent_price_per_sqm"] = context["avg_rent_price_per_sqm"].round(2)
+    context["avg_sale_price_per_sqm"] = context["avg_sale_price_per_sqm"].round(2)
+    if "furnished_share" in context.columns:
+        context["furnished_share"] = context["furnished_share"].round(4)
+    context["active_listing_share"] = context["active_listing_share"].round(4)
+
+    return context
+
+
+def add_listing_context(core_df: pd.DataFrame, listings_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Merge district listing context into the core community dataset.
+
+    Listing count columns are filled with 0 when a district has no listing rows.
+    Price and share metrics are left as NA when unavailable.
+    """
+    listing_context = build_listing_context(listings_df)
+    merged = core_df.merge(listing_context, on="district", how="left")
+
+    for col in LISTING_COUNT_COLUMNS:
+        if col in merged.columns:
+            merged[col] = merged[col].fillna(0).astype(int)
+
+    return merged
+
+
 def count_amenities_by_district(amenities: pd.DataFrame) -> pd.DataFrame:
     """Alias for :func:`build_amenity_counts` (backward compatibility)."""
     return build_amenity_counts(amenities)
@@ -140,12 +239,11 @@ def build_market_features(
     """
     Build supporting market-pressure features from listings and transactions.
 
-    Should produce per-district listing_count, transaction_count,
-    listings_per_10k_residents, avg_price_per_sqm_aed, etc.
+    Deprecated in favour of :func:`build_listing_context` for listings.
     """
-    raise NotImplementedError(
-        "TODO: build_market_features — district-level listing/transaction aggregates"
-    )
+    if listings is None:
+        raise NotImplementedError("TODO: build_market_features without listings")
+    return build_listing_context(listings)
 
 
 def build_feasibility_features(
