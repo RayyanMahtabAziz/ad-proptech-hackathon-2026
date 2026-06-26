@@ -113,6 +113,29 @@ TRANSACTION_CONTEXT_COLUMNS = TRANSACTION_COUNT_COLUMNS + [
 
 RECENT_TRANSACTION_YEAR = 2026
 
+# Keys accepted in the data dict (load_challenge_data names + CSV-style aliases).
+_COMMUNITIES_KEYS = ("communities", "sample_communities")
+_DISTRICTS_KEYS = ("districts",)
+_AMENITIES_KEYS = ("amenities", "osm_amenities")
+_LISTINGS_KEYS = ("listings", "sample_listings")
+_PARCELS_KEYS = ("parcels", "sample_parcels")
+_TRANSACTIONS_KEYS = ("transactions", "sample_transactions")
+
+# Supporting numeric columns safe to default to 0 when a district has no rows.
+SUPPORT_COUNT_ZERO_FILL_COLUMNS = (
+    LISTING_COUNT_COLUMNS
+    + PARCEL_COUNT_COLUMNS
+    + TRANSACTION_COUNT_COLUMNS
+)
+
+SUPPORT_SHARE_ZERO_FILL_COLUMNS = (
+    "active_listing_share",
+    "recent_transaction_share",
+    "furnished_share",
+)
+
+SUPPORT_OTHER_ZERO_FILL_COLUMNS = ("total_transaction_value_aed",)
+
 def build_amenity_counts(osm_amenities: pd.DataFrame) -> pd.DataFrame:
     """
     Count OSM amenities per district and pivot to one row per district.
@@ -461,6 +484,90 @@ def add_transaction_context(
     return merged
 
 
+def _get_dataframe(data: dict[str, pd.DataFrame], *keys: str) -> pd.DataFrame | None:
+    """Return the first matching dataframe from *data*, or None."""
+    for key in keys:
+        frame = data.get(key)
+        if frame is not None:
+            return frame
+    return None
+
+
+def _require_dataframe(
+    data: dict[str, pd.DataFrame], keys: tuple[str, ...], label: str
+) -> pd.DataFrame:
+    """Return a required dataframe or raise a clear error."""
+    frame = _get_dataframe(data, *keys)
+    if frame is None:
+        raise ValueError(
+            f"Missing required dataset for {label}. Expected one of: {', '.join(keys)}"
+        )
+    return frame
+
+
+def _fill_supporting_numeric_defaults(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Fill missing supporting numeric columns with 0 where that is semantically safe.
+
+    Counts, shares, and total transaction value default to 0.
+    Price averages and dates are left as NA.
+    """
+    out = df.copy()
+
+    zero_fill_cols = (
+        list(SUPPORT_COUNT_ZERO_FILL_COLUMNS)
+        + list(SUPPORT_SHARE_ZERO_FILL_COLUMNS)
+        + list(SUPPORT_OTHER_ZERO_FILL_COLUMNS)
+    )
+
+    for col in zero_fill_cols:
+        if col not in out.columns:
+            continue
+        out[col] = out[col].fillna(0)
+        if col in SUPPORT_COUNT_ZERO_FILL_COLUMNS:
+            out[col] = out[col].astype(int)
+
+    return out
+
+
+def build_full_feature_dataset(data: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    """
+    Build the complete community/district feature table for scoring.
+
+    Parameters
+    ----------
+    data:
+        Mapping of dataset names to dataframes — as returned by
+        :func:`community_gap.data_loader.load_challenge_data`. CSV-style
+        aliases (e.g. ``sample_communities``) are also accepted.
+
+    Returns
+    -------
+    pd.DataFrame
+        One row per community record with core, amenity, and supporting context
+        columns merged on ``district``.
+    """
+    communities = _require_dataframe(data, _COMMUNITIES_KEYS, "communities")
+    districts = _require_dataframe(data, _DISTRICTS_KEYS, "districts")
+    amenities = _require_dataframe(data, _AMENITIES_KEYS, "osm amenities")
+
+    df = build_core_dataset(communities, districts, amenities)
+
+    listings = _get_dataframe(data, *_LISTINGS_KEYS)
+    if listings is not None:
+        df = add_listing_context(df, listings)
+
+    parcels = _get_dataframe(data, *_PARCELS_KEYS)
+    if parcels is not None:
+        df = add_parcel_context(df, parcels)
+
+    transactions = _get_dataframe(data, *_TRANSACTIONS_KEYS)
+    if transactions is not None:
+        df = add_transaction_context(df, transactions)
+
+    return _fill_supporting_numeric_defaults(df)
+
+
 def count_amenities_by_district(amenities: pd.DataFrame) -> pd.DataFrame:
     """Alias for :func:`build_amenity_counts` (backward compatibility)."""
     return build_amenity_counts(amenities)
@@ -516,9 +623,58 @@ def build_district_feature_table(bundle: DatasetBundle) -> pd.DataFrame:
 
     This is the main input to :mod:`community_gap.scoring`.
 
-    Returns one row per district with community metrics, amenity counts,
-    and supporting context columns.
+    Returns one row per community record with all feature columns.
     """
-    raise NotImplementedError(
-        "TODO: build_district_feature_table — merge all district-level features"
-    )
+    data = {
+        "districts": bundle.districts,
+        "communities": bundle.communities,
+        "amenities": bundle.amenities,
+    }
+    if bundle.listings is not None:
+        data["listings"] = bundle.listings
+    if bundle.parcels is not None:
+        data["parcels"] = bundle.parcels
+    if bundle.transactions is not None:
+        data["transactions"] = bundle.transactions
+    return build_full_feature_dataset(data)
+
+
+def _sample_display_columns(df: pd.DataFrame) -> list[str]:
+    """Pick readable columns for CLI sample output."""
+    preferred = [
+        "community_id",
+        "district",
+        "service_demand_index",
+        "mobility_score",
+        "total_amenities",
+        "listing_count",
+        "parcel_count",
+        "transaction_count",
+        "recent_transaction_share",
+    ]
+    return [col for col in preferred if col in df.columns]
+
+
+def main() -> None:
+    """Load challenge data, build features, and print a smoke-test summary."""
+    from community_gap import DATA_DIR
+    from community_gap.data_loader import load_challenge_data
+
+    print(f"Loading data from {DATA_DIR.resolve()}...")
+    data = load_challenge_data(DATA_DIR)
+    print(f"Loaded datasets: {', '.join(sorted(data.keys()))}\n")
+
+    df = build_full_feature_dataset(data)
+
+    print(f"final shape: {df.shape[0]} rows x {df.shape[1]} columns")
+    print(f"\ncolumns ({len(df.columns)}):")
+    for col in df.columns:
+        print(f"  - {col}")
+
+    display_cols = _sample_display_columns(df)
+    print("\nsample rows:")
+    print(df[display_cols].head(3).to_string(index=False))
+
+
+if __name__ == "__main__":
+    main()

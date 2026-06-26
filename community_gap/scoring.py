@@ -1,101 +1,285 @@
 """
-Deterministic scoring — all district scores and confidence levels.
+Deterministic scoring — all district scores and gap levels.
 
 The LLM must never invent these values. Every score must be traceable
 to community metrics and OSM amenity counts.
 
-Main outputs per district:
-  - community_need_score
-  - amenity_adequacy_score
-  - amenity_shortage_score
-  - market_pressure_score          (supporting — max ~5% of gap)
-  - intervention_feasibility_score (supporting — max ~5% of gap)
-  - community_gap_score            (primary rank — need + shortage dominate)
-  - confidence_level               (high | medium | low)
+Core score logic:
+  community_gap_score = demand vs amenity supply (need + shortage dominate).
+
+Supporting context (not mixed into need):
+  - listings / transactions → market_pressure_score only (10% of gap)
+  - parcels / infrastructure → intervention_feasibility_score (shown separately)
 """
 
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 
-# Core gap weights — community need + amenity shortage must dominate.
+# community_gap_score weights — need + shortage are core; market is supporting only.
 GAP_WEIGHTS = {
     "community_need": 0.55,
     "amenity_shortage": 0.35,
-    "market_pressure": 0.05,
-    "intervention_feasibility": 0.05,
+    "market_pressure": 0.10,
 }
 
+COMMUNITY_NEED_WEIGHTS = {
+    "service_demand_index": 0.40,
+    "inverse_mobility": 0.20,
+    "inverse_experience": 0.20,
+    "population_percentile": 0.10,
+    "occupancy_normalized": 0.10,
+}
 
-def compute_community_need_score(features: pd.DataFrame) -> pd.Series:
+AMENITY_ADEQUACY_WEIGHTS = {
+    "education": 0.22,
+    "healthcare": 0.22,
+    "mobility": 0.20,
+    "community": 0.16,
+    "retail": 0.10,
+    "services": 0.10,
+}
+
+AMENITY_TO_CITY_MEDIAN = {
+    "education": "city_median_education",
+    "healthcare": "city_median_healthcare",
+    "mobility": "city_median_mobility_amenities",
+    "community": "city_median_community",
+    "retail": "city_median_retail",
+    "services": "city_median_services",
+}
+
+MARKET_PRESSURE_WEIGHTS = {
+    "listing_count": 0.40,
+    "available_listing_count": 0.20,
+    "transaction_count": 0.25,
+    "active_listing_share": 0.15,
+}
+
+MARKET_PRESSURE_COLUMNS = tuple(MARKET_PRESSURE_WEIGHTS.keys())
+
+FEASIBILITY_WEIGHTS_WITH_PARCELS = {
+    "infrastructure_score": 0.40,
+    "vacant_or_available_parcel_count": 0.30,
+    "avg_potential_score": 0.30,
+}
+
+SCORE_COLUMNS = [
+    "community_need_score",
+    "amenity_adequacy_score",
+    "amenity_shortage_score",
+    "market_pressure_score",
+    "intervention_feasibility_score",
+    "community_gap_score",
+]
+
+
+def normalize_series(series: pd.Series, higher_is_better: bool = True) -> pd.Series:
     """
-    Score community demand pressure (0–100, higher = more need).
+    Normalize a numeric series to a 0–100 scale using percentile rank.
 
-    Inputs: service_demand_index, mobility_score, resident_experience_score,
-    population_estimate, occupancy_rate.
+    Parameters
+    ----------
+    series:
+        Raw values to normalize.
+    higher_is_better:
+        When ``False``, lower raw values receive higher normalized scores.
+
+    Notes
+    -----
+    - Constant series return 50 (neutral) for non-null rows.
+    - Missing values are filled with 0 so downstream weighted sums stay safe.
     """
-    raise NotImplementedError("TODO: compute_community_need_score")
+    if series.empty:
+        return pd.Series(dtype=float)
+
+    non_null = series.dropna()
+    if non_null.empty:
+        return pd.Series(0.0, index=series.index)
+
+    if non_null.nunique() == 1:
+        result = pd.Series(50.0, index=series.index)
+        return result.where(series.notna(), 0.0)
+
+    ranked = series.rank(pct=True, ascending=higher_is_better, na_option="keep")
+    normalized = ranked * 100
+    return normalized.fillna(0.0)
 
 
-def compute_amenity_adequacy_score(features: pd.DataFrame) -> pd.Series:
+def _category_adequacy(count: pd.Series, median: pd.Series) -> pd.Series:
     """
-    Score OSM amenity coverage vs city medians (0–100, higher = better coverage).
+    Compare district amenity count to city median.
 
-    Normalize amenity counts per 10k residents before comparing to medians.
+    score = min(count / median, 1.5) / 1.5 * 100
+    When median is 0: 100 if count > 0 else 0.
     """
-    raise NotImplementedError("TODO: compute_amenity_adequacy_score")
+    c = count.fillna(0).astype(float)
+    m = median.fillna(0).astype(float)
+
+    ratio = np.where(
+        m > 0,
+        np.minimum(c / m, 1.5),
+        np.where(c > 0, 1.5, 0.0),
+    )
+    return pd.Series(ratio / 1.5 * 100, index=count.index)
 
 
-def compute_amenity_shortage_score(adequacy: pd.Series) -> pd.Series:
-    """Amenity shortage = 100 - amenity_adequacy_score."""
-    raise NotImplementedError("TODO: compute_amenity_shortage_score")
+def _round_score(series: pd.Series) -> pd.Series:
+    """Round score series to whole numbers."""
+    return series.round(0).astype(int)
 
 
-def compute_market_pressure_score(features: pd.DataFrame) -> pd.Series:
+def _compute_community_need_score(df: pd.DataFrame) -> pd.Series:
     """
-    Supporting market activity signal (0–100).
+    High need = high demand, weak mobility, weak experience, high population, high occupancy.
 
-    Uses listings and transactions density. Must not dominate the main gap score.
+    Uses raw 0–100 indices where available; occupancy is percentile-normalized.
     """
-    raise NotImplementedError("TODO: compute_market_pressure_score")
+    service_demand = df["service_demand_index"].fillna(0)
+    inverse_mobility = 100 - df["mobility_score"].fillna(0)
+    inverse_experience = 100 - df["resident_experience_score"].fillna(0)
+    population_pct = df["population_percentile"].fillna(0)
+    occupancy_norm = normalize_series(df["occupancy_rate"])
+
+    score = (
+        COMMUNITY_NEED_WEIGHTS["service_demand_index"] * service_demand
+        + COMMUNITY_NEED_WEIGHTS["inverse_mobility"] * inverse_mobility
+        + COMMUNITY_NEED_WEIGHTS["inverse_experience"] * inverse_experience
+        + COMMUNITY_NEED_WEIGHTS["population_percentile"] * population_pct
+        + COMMUNITY_NEED_WEIGHTS["occupancy_normalized"] * occupancy_norm
+    )
+    return score.clip(0, 100)
 
 
-def compute_intervention_feasibility_score(features: pd.DataFrame) -> pd.Series:
+def _compute_amenity_adequacy_score(df: pd.DataFrame) -> pd.Series:
     """
-    Supporting feasibility signal (0–100).
+    Weighted OSM amenity coverage vs city medians.
 
-    Uses vacant/developable parcels and infrastructure context.
+    Education, healthcare, and mobility amenity categories carry slightly more weight
+    than retail and services.
     """
-    raise NotImplementedError("TODO: compute_intervention_feasibility_score")
+    adequacy = pd.Series(0.0, index=df.index)
+
+    for category, weight in AMENITY_ADEQUACY_WEIGHTS.items():
+        median_col = AMENITY_TO_CITY_MEDIAN[category]
+        if category not in df.columns or median_col not in df.columns:
+            continue
+        cat_score = _category_adequacy(df[category], df[median_col])
+        adequacy = adequacy + weight * cat_score
+
+    return adequacy.clip(0, 100)
 
 
-def compute_community_gap_score(
-    need: pd.Series,
-    shortage: pd.Series,
-    market: pd.Series,
-    feasibility: pd.Series,
-) -> pd.Series:
+def _compute_market_pressure_score(df: pd.DataFrame) -> pd.Series:
     """
-    Primary intervention-priority score.
+    Supporting market activity signal from listings and transactions.
 
-    Default weights: 55% need + 35% shortage + 5% market + 5% feasibility.
+    Listings/transactions are supporting market pressure only — not a pricing dashboard.
+    Returns 0 when required support columns are missing.
     """
-    raise NotImplementedError("TODO: compute_community_gap_score")
+    if not all(col in df.columns for col in MARKET_PRESSURE_COLUMNS):
+        return pd.Series(0, index=df.index, dtype=int)
+
+    components = {
+        "listing_count": normalize_series(df["listing_count"]),
+        "available_listing_count": normalize_series(df["available_listing_count"]),
+        "transaction_count": normalize_series(df["transaction_count"]),
+        # active_listing_share is already 0–1; treat higher as more market activity
+        "active_listing_share": normalize_series(df["active_listing_share"]),
+    }
+
+    score = sum(MARKET_PRESSURE_WEIGHTS[col] * components[col] for col in MARKET_PRESSURE_COLUMNS)
+    return score.clip(0, 100)
 
 
-def compute_confidence_level(scored: pd.DataFrame) -> tuple[pd.Series, pd.Series]:
+def _compute_intervention_feasibility_score(df: pd.DataFrame) -> pd.Series:
     """
-  Return (confidence_level, confidence_explanation) per district.
+    Supporting feasibility from infrastructure and parcels.
 
-    Confidence reflects evidence agreement, not ML probability.
+    Parcels help explain feasibility, not community need. When parcel support
+    columns are absent, fall back to infrastructure_score only.
     """
-    raise NotImplementedError("TODO: compute_confidence_level")
+    if "infrastructure_score" not in df.columns:
+        return pd.Series(0, index=df.index, dtype=int)
+
+    infrastructure = df["infrastructure_score"].fillna(0).clip(0, 100)
+
+    has_vacant = "vacant_or_available_parcel_count" in df.columns
+    has_potential = "avg_potential_score" in df.columns
+
+    if has_vacant and has_potential:
+        vacant_norm = normalize_series(df["vacant_or_available_parcel_count"])
+        potential = df["avg_potential_score"].fillna(0).clip(0, 100)
+        score = (
+            FEASIBILITY_WEIGHTS_WITH_PARCELS["infrastructure_score"] * infrastructure
+            + FEASIBILITY_WEIGHTS_WITH_PARCELS["vacant_or_available_parcel_count"]
+            * vacant_norm
+            + FEASIBILITY_WEIGHTS_WITH_PARCELS["avg_potential_score"] * potential
+        )
+        return score.clip(0, 100)
+
+    return infrastructure
+
+
+def _gap_level(score: pd.Series) -> pd.Series:
+    """Map community_gap_score to High / Medium / Low priority bands."""
+    return pd.cut(
+        score,
+        bins=[-np.inf, 49, 74, 100],
+        labels=["Low", "Medium", "High"],
+    ).astype(str)
+
+
+def add_scores(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Add deterministic score columns to a feature dataframe.
+
+    Expects output from :func:`community_gap.features.build_full_feature_dataset`.
+    """
+    out = df.copy()
+
+    # --- Core: community need vs amenity supply ---
+    out["community_need_score"] = _round_score(_compute_community_need_score(out))
+    out["amenity_adequacy_score"] = _round_score(_compute_amenity_adequacy_score(out))
+    out["amenity_shortage_score"] = _round_score(100 - out["amenity_adequacy_score"])
+
+    # --- Supporting: market pressure (listings + transactions) ---
+    out["market_pressure_score"] = _round_score(_compute_market_pressure_score(out))
+
+    # --- Supporting: intervention feasibility (parcels + infrastructure) ---
+    out["intervention_feasibility_score"] = _round_score(
+        _compute_intervention_feasibility_score(out)
+    )
+
+    # --- Primary rank: need + shortage dominate; market pressure is minor context ---
+    # intervention_feasibility_score is intentionally excluded from community_gap_score.
+    out["community_gap_score"] = _round_score(
+        GAP_WEIGHTS["community_need"] * out["community_need_score"]
+        + GAP_WEIGHTS["amenity_shortage"] * out["amenity_shortage_score"]
+        + GAP_WEIGHTS["market_pressure"] * out["market_pressure_score"]
+    )
+
+    out["gap_level"] = _gap_level(out["community_gap_score"])
+
+    return out
 
 
 def score_all_districts(features: pd.DataFrame) -> pd.DataFrame:
     """
-    Apply all scoring functions and return a ranked district table.
+    Apply scoring and rank rows by community_gap_score (1 = highest priority).
 
-    Adds score columns, confidence fields, and intervention_rank (1 = highest gap).
+    Returns one row per input record (community-level when features are community-level).
     """
-    raise NotImplementedError("TODO: score_all_districts — orchestrate all score functions")
+    scored = add_scores(features)
+    scored = scored.sort_values("community_gap_score", ascending=False).reset_index(drop=True)
+    scored["intervention_rank"] = range(1, len(scored) + 1)
+    return scored
+
+
+# Backward-compatible aliases for older placeholder names
+compute_community_need_score = _compute_community_need_score
+compute_amenity_adequacy_score = _compute_amenity_adequacy_score
+compute_amenity_shortage_score = lambda adequacy: 100 - adequacy
+compute_market_pressure_score = _compute_market_pressure_score
+compute_intervention_feasibility_score = _compute_intervention_feasibility_score
