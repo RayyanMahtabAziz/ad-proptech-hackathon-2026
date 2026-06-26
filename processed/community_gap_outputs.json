@@ -1,0 +1,38 @@
+{
+  "project": "Community Gap & Confidence Copilot",
+  "track": "Future Communities",
+  "generated_at": "2026-06-26T09:55:12.106850+00:00",
+  "methodology_version": "0.1.0",
+  "scoring_weights": {
+    "community_need": 0.55,
+    "amenity_shortage": 0.35,
+    "market_pressure": 0.05,
+    "intervention_feasibility": 0.05
+  },
+  "status": "placeholder \u2014 run build script after implementing scoring",
+  "districts": [],
+  "ranked_summary": [],
+  "district_count": 20,
+  "master_districts": [
+    "Al Bahia",
+    "Al Bateen",
+    "Al Ghadeer",
+    "Al Khalidiyah",
+    "Al Maqta",
+    "Al Maryah Island",
+    "Al Raha Beach",
+    "Al Reef",
+    "Al Reem Island",
+    "Al Shamkha",
+    "Al Zahiyah",
+    "Corniche",
+    "Danet Abu Dhabi",
+    "Khalifa City",
+    "Masdar City",
+    "Mohammed Bin Zayed City",
+    "Mussafah",
+    "Saadiyat Island",
+    "Yas Island",
+    "Zayed City"
+  ]
+}
