@@ -2,7 +2,7 @@
  * Check AI recommendation layer for Al Ghadeer.
  *
  * Always validates deterministic fallback (must pass).
- * Optionally tests OpenRouter when OPENROUTER_API_KEY is set.
+ * Tests OpenRouter when OPENROUTER_API_KEY is set.
  * Never prints API keys.
  *
  * Run: npm run check:ai
@@ -11,7 +11,10 @@
 import { existsSync, readFileSync } from "fs";
 import { join, resolve } from "path";
 import { fallbackRecommendation } from "../lib/fallbackRecommendation";
-import { generateRecommendation } from "../lib/aiRecommendation";
+import {
+  getServerEnvStatus,
+  loadServerEnv,
+} from "../lib/loadServerEnv";
 import type { CommunityGapOutputs, DistrictRecommendation } from "../lib/communityGapTypes";
 
 const ROOT = resolve(__dirname, "..");
@@ -27,35 +30,6 @@ const REQUIRED_KEYS: (keyof DistrictRecommendation)[] = [
   "uncertainty_note",
 ];
 
-function loadEnvFiles(): void {
-  const candidates = [
-    join(ROOT, ".env.local"),
-    join(ROOT, ".env"),
-    join(ROOT, "..", ".env"),
-  ];
-
-  for (const filePath of candidates) {
-    if (!existsSync(filePath)) continue;
-    const lines = readFileSync(filePath, "utf8").split("\n");
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith("#") || !trimmed.includes("=")) continue;
-      const eq = trimmed.indexOf("=");
-      const key = trimmed.slice(0, eq).trim();
-      let value = trimmed.slice(eq + 1).trim();
-      if (
-        (value.startsWith('"') && value.endsWith('"')) ||
-        (value.startsWith("'") && value.endsWith("'"))
-      ) {
-        value = value.slice(1, -1);
-      }
-      if (key && process.env[key] === undefined) {
-        process.env[key] = value;
-      }
-    }
-  }
-}
-
 function validateOutput(rec: DistrictRecommendation, label: string): void {
   const missing = REQUIRED_KEYS.filter((k) => !(k in rec));
   if (missing.length > 0) {
@@ -68,13 +42,40 @@ function validateOutput(rec: DistrictRecommendation, label: string): void {
   }
 }
 
+function validateAlGhadeerWording(
+  rec: DistrictRecommendation,
+  label: string
+): void {
+  const summary = rec.district_summary.toLowerCase();
+  if (!summary.includes("top priority in the current dataset")) {
+    throw new Error(`${label}: missing top-priority wording for Al Ghadeer`);
+  }
+  if (summary.includes("high gap")) {
+    throw new Error(`${label}: must not call Al Ghadeer a High gap`);
+  }
+  if (!summary.includes("medium")) {
+    throw new Error(`${label}: should reflect gap_level Medium`);
+  }
+}
+
 function printResult(rec: DistrictRecommendation, source: string): void {
   console.log(`\n=== ${DISTRICT_NAME} (${source}) ===`);
   console.log(JSON.stringify(rec, null, 2));
 }
 
 async function main(): Promise<number> {
-  loadEnvFiles();
+  loadServerEnv();
+  const envStatus = getServerEnvStatus();
+
+  console.log("Env check:");
+  console.log(`  project root: ${ROOT}`);
+  console.log(
+    `  env files found: ${envStatus.envFilesFound.length > 0 ? envStatus.envFilesFound.join(", ") : "(none)"}`
+  );
+  console.log(`  OPENROUTER_API_KEY loaded: ${envStatus.keyLoaded}`);
+  console.log(`  OPENROUTER_MODEL: ${envStatus.model}`);
+
+  const { generateRecommendation } = await import("../lib/aiRecommendation");
 
   if (!existsSync(DATA_PATH)) {
     console.error(`ERROR: missing ${DATA_PATH}`);
@@ -91,11 +92,14 @@ async function main(): Promise<number> {
     return 1;
   }
 
-  console.log(`Loaded community_gap_outputs.json — checking ${DISTRICT_NAME}`);
+  console.log(`\nLoaded community_gap_outputs.json — checking ${DISTRICT_NAME}`);
 
-  // 1. Fallback (required)
+  let fallbackPassed = false;
+  let openRouterPassed = false;
+
   const fallbackRec = fallbackRecommendation(district);
   validateOutput(fallbackRec, "fallback");
+  validateAlGhadeerWording(fallbackRec, "fallback");
   printResult(fallbackRec, "fallback");
 
   if (
@@ -105,40 +109,36 @@ async function main(): Promise<number> {
     throw new Error("fallback recommended_intervention does not match pipeline");
   }
 
-  if (
-    !fallbackRec.district_summary
-      .toLowerCase()
-      .includes("top priority in the current dataset")
-  ) {
-    throw new Error("Al Ghadeer fallback missing top-priority wording");
-  }
-
   console.log("\nFallback check: PASSED");
+  fallbackPassed = true;
 
-  // 2. OpenRouter (optional)
-  const apiKey = process.env.OPENROUTER_API_KEY?.trim();
-  if (apiKey) {
-    console.log("\nOPENROUTER_API_KEY found — testing OpenRouter path...");
-    try {
-      const { recommendation, source } = await generateRecommendation(district);
-      validateOutput(recommendation, `openrouter (${source})`);
-      printResult(recommendation, source);
-      if (source === "llm") {
-        console.log("\nOpenRouter check: PASSED (llm)");
-      } else {
-        console.log(
-          "\nOpenRouter check: PASSED (fell back to deterministic output)"
-        );
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      console.log(`\nOpenRouter check: SKIPPED (${message})`);
-      console.log("Fallback still passed — overall check OK.");
-    }
+  if (!envStatus.keyLoaded) {
+    console.log(
+      "\nOpenRouter check: SKIPPED (OPENROUTER_API_KEY not loaded — check .env in project root)"
+    );
   } else {
-    console.log("\nOPENROUTER_API_KEY not set — skipping OpenRouter test.");
+    console.log("\nTesting OpenRouter path...");
+    const { recommendation, source } = await generateRecommendation(district);
+    validateOutput(recommendation, `openrouter (${source})`);
+    validateAlGhadeerWording(recommendation, `openrouter (${source})`);
+    printResult(recommendation, source);
+
+    if (source === "llm") {
+      console.log("\nOpenRouter check: PASSED (llm)");
+      openRouterPassed = true;
+    } else {
+      console.error(
+        "\nOpenRouter check: FAILED (key loaded but source was fallback — see server warnings above)"
+      );
+      return 1;
+    }
   }
 
+  console.log("\nSummary:");
+  console.log(`  Fallback: ${fallbackPassed ? "PASSED" : "FAILED"}`);
+  console.log(
+    `  OpenRouter: ${openRouterPassed ? "PASSED" : envStatus.keyLoaded ? "FAILED" : "SKIPPED"}`
+  );
   console.log("\nAll required checks passed.");
   return 0;
 }

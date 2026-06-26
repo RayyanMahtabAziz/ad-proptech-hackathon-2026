@@ -116,14 +116,16 @@ The server enforces `recommended_intervention` to match `classification.recommen
 | Item | Detail |
 |------|--------|
 | Provider | [OpenRouter](https://openrouter.ai/) (OpenAI-compatible chat API) |
-| Env var | `OPENROUTER_API_KEY` in `.env` / `.env.local` |
-| Model | `OPENROUTER_MODEL` (optional; default `openai/gpt-4o-mini`) |
+| Env var | `OPENROUTER_API_KEY` in `.env` / `.env.local` (project root: `ad-proptech-hackathon-2026/`) |
+| Model | `OPENROUTER_MODEL` (optional; default `openai/gpt-4o-mini` in code) |
+| Env loading | `loadServerEnv()` reads `.env.local`, `.env`, then parent `../.env` server-side only |
 | Where it runs | **Server-side only** — `app/api/recommendation/route.ts` |
 | Frontend | Calls `POST /api/recommendation` — **never OpenRouter directly** |
 
 **Security:**
 
 - Do **not** use `NEXT_PUBLIC_OPENROUTER_API_KEY`
+- Do **not** call OpenRouter from browser code or client components
 - The API key is never sent to the browser or printed in logs
 - Keys stay in server environment variables only
 
@@ -227,6 +229,7 @@ Content-Type: application/json
 | Deterministic fallback | `lib/fallbackRecommendation.ts` |
 | API route | `app/api/recommendation/route.ts` |
 | Request validation | `lib/validateDistrictPayload.ts` |
+| Server env loading | `lib/loadServerEnv.ts` |
 | Frontend helper | `lib/recommendationClient.ts` |
 | Types | `lib/communityGapTypes.ts` |
 | Python parity | `ai/recommendation.py`, `ai/fallback.py` |

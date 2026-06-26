@@ -182,6 +182,25 @@ def validate_and_enforce_output(
     if _has_mixed_evidence(evidence_bullets, top_gap_drivers) and "mixed" not in uncertainty_lower:
         enforced["uncertainty_note"] = f"Evidence signals are mixed. {enforced['uncertainty_note']}"
 
+    if (
+        classification["confidence_level"] == "High"
+        and not _has_mixed_evidence(evidence_bullets, top_gap_drivers)
+        and "mixed" in enforced["uncertainty_note"].lower()
+    ):
+        enforced["uncertainty_note"] = (
+            "Multiple pipeline signals agree on the gap story. "
+            "Based on pre-processed static data, not a live feed."
+        )
+
+    enforced["district_summary"] = re.sub(
+        r"\s+(High|Medium|Low)\s*\.?\s*$",
+        "",
+        enforced["district_summary"],
+        flags=re.IGNORECASE,
+    ).strip()
+    if not enforced["district_summary"].endswith("."):
+        enforced["district_summary"] += "."
+
     if scores.get("data_completeness_score", 100) < 80 and "completeness" not in uncertainty_lower:
         enforced["uncertainty_note"] += f" Data completeness is {scores['data_completeness_score']}/100."
 

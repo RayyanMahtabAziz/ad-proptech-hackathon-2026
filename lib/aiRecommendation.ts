@@ -16,7 +16,7 @@ import {
 
 export { SYSTEM_PROMPT, buildUserPrompt, JSON_OUTPUT_SCHEMA, SPECIAL_WORDING_RULE } from "./aiRecommendationPrompt";
 
-/** Default OpenRouter model — override via OPENROUTER_MODEL in .env */
+/** Default OpenRouter model when OPENROUTER_MODEL is unset — change via .env */
 export const DEFAULT_OPENROUTER_MODEL = "openai/gpt-4o-mini";
 
 const OPENROUTER_CHAT_URL = "https://openrouter.ai/api/v1/chat/completions";
@@ -218,6 +218,23 @@ export function validateAndEnforceOutput(
   enforced.main_gap = enforceMainGap(enforced.main_gap, district);
 
   if (
+    classification.confidence_level === "High" &&
+    !hasMixedEvidence(evidence_bullets, top_gap_drivers) &&
+    enforced.uncertainty_note.toLowerCase().includes("mixed")
+  ) {
+    enforced.uncertainty_note =
+      "Multiple pipeline signals agree on the gap story. Based on pre-processed static data, not a live feed.";
+  }
+
+  enforced.district_summary = enforced.district_summary
+    .replace(/\s+(High|Medium|Low)\s*\.?\s*$/i, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  if (!enforced.district_summary.endsWith(".")) {
+    enforced.district_summary += ".";
+  }
+
+  if (
     !enforced.uncertainty_note.toLowerCase().includes("pre-processed") &&
     !enforced.uncertainty_note.toLowerCase().includes("static")
   ) {
@@ -304,13 +321,19 @@ export async function generateRecommendation(
       try {
         const recommendation = validateAndEnforceOutput(raw, districtObject);
         return { recommendation, source: "llm" };
-      } catch {
+      } catch (validationError) {
         console.warn(
           "[recommendation] LLM output failed validation, using fallback"
         );
+        if (validationError instanceof Error) {
+          console.warn(`[recommendation] validation: ${validationError.message}`);
+        }
       }
-    } catch {
+    } catch (openRouterError) {
       console.warn("[recommendation] OpenRouter unavailable, using fallback");
+      if (openRouterError instanceof Error) {
+        console.warn(`[recommendation] openrouter: ${openRouterError.message}`);
+      }
     }
   }
 
